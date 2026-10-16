@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>کافه‌داری حرفه‌ای — Café Tycoon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="styles/main.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>" />
+</head>
+<body>
+  <div id="app">
+    <!-- Loading / Boot screen -->
+    <div id="boot" class="boot">
+      <div class="boot-card">
+        <div class="boot-logo">☕</div>
+        <h1 class="boot-title" data-i18n="game_title">کافه‌داری حرفه‌ای</h1>
+        <p class="boot-sub" data-i18n="game_subtitle">شبیه‌ساز مدیریت کافه</p>
+        <div class="boot-bar"><div class="boot-bar-fill" id="boot-fill"></div></div>
+        <p class="boot-status" id="boot-status" data-i18n="loading">در حال بارگذاری…</p>
+        <button class="btn btn-primary btn-lg" id="boot-start" style="display:none" data-i18n="start_game">شروع بازی</button>
+      </div>
+    </div>
+
+    <!-- Main game -->
+    <div id="game-root" class="game-root" style="display:none">
+      <canvas id="game"></canvas>
+
+      <!-- Top HUD -->
+      <header id="hud" class="hud">
+        <div class="hud-group">
+          <div class="hud-pill" id="hud-cash" title="پول نقد">
+            <span class="ico">💰</span><span class="val" id="hud-cash-val">$0</span>
+          </div>
+          <div class="hud-pill" id="hud-day" title="روز">
+            <span class="ico">📅</span><span class="val" id="hud-day-val">روز ۱</span>
+          </div>
+          <div class="hud-pill" id="hud-rep" title="اعتبار">
+            <span class="ico">⭐</span><span class="val" id="hud-rep-val">★★☆☆☆</span>
+          </div>
+        </div>
+
+        <div class="hud-group hud-center">
+          <div class="hud-clock">
+            <div class="clock-label" id="hud-phase">باز نشده</div>
+            <div class="clock-track"><div class="clock-fill" id="hud-clock-fill"></div></div>
+            <div class="clock-time" id="hud-clock-time">۰۸:۰۰</div>
+          </div>
+        </div>
+
+        <div class="hud-group">
+          <button class="icon-btn" id="btn-sound" title="صدا">🔊</button>
+          <button class="icon-btn" id="btn-settings" title="تنظیمات">⚙️</button>
+          <button class="icon-btn" id="btn-help" title="راهنما">❓</button>
+        </div>
+      </header>
+
+      <!-- Right sidebar (tabs) -->
+      <aside id="sidebar" class="sidebar">
+        <nav class="tabs" id="tabs">
+          <button class="tab active" data-tab="menu"><span>📋</span><span data-i18n="tab_menu">منو</span></button>
+          <button class="tab" data-tab="staff"><span>👥</span><span data-i18n="tab_staff">کارکنان</span></button>
+          <button class="tab" data-tab="shop"><span>🛒</span><span data-i18n="tab_shop">فروشگاه</span></button>
+          <button class="tab" data-tab="stats"><span>📊</span><span data-i18n="tab_stats">آمار</span></button>
+        </nav>
+        <div class="tab-body" id="tab-body"></div>
+      </aside>
+
+      <!-- Bottom control bar -->
+      <footer id="bottombar" class="bottombar">
+        <button class="btn btn-open" id="btn-open"><span id="open-label" data-i18n="open_cafe">باز کردن کافه</span></button>
+        <div class="speed-group">
+          <button class="icon-btn speed" data-speed="1" id="spd-1">▶</button>
+          <button class="icon-btn speed" data-speed="2" id="spd-2">▶▶</button>
+          <button class="icon-btn speed" data-speed="3" id="spd-3">▶▶▶</button>
+        </div>
+        <div class="bottom-info" id="bottom-info">
+          <span data-i18n="today_revenue">درآمد امروز: </span><b id="hud-rev">$0</b>
+          <span class="sep">•</span>
+          <span data-i18n="served">سرو شده: </span><b id="hud-served">۰</b>
+        </div>
+      </footer>
+
+      <!-- Floating overlays -->
+      <div id="toasts" class="toasts"></div>
+      <div id="tooltip" class="tooltip" style="display:none"></div>
+      <div id="modal-root"></div>
+      <div id="tutorial" class="tutorial" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Scripts (classic, dependency-ordered, no build step) -->
+  <script src="src/utils.js"></script>
+  <script src="src/audio.js"></script>
+  <script src="src/data.js"></script>
+  <script src="src/i18n.js"></script>
+  <script src="src/entities.js"></script>
+  <script src="src/systems.js"></script>
+  <script src="src/render.js"></script>
+  <script src="src/ui.js"></script>
+  <script src="src/game.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>
