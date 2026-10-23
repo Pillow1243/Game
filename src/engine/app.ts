@@ -1,13 +1,14 @@
 import { AudioBus } from './audio';
 import { CameraRig, type CameraSnapshot } from './camera';
 import { InputManager } from './input';
-import { hideDialog, mountInterface, renderSettings, renderState, showDialog } from './interface';
+import { hideDialog, mountInterface, renderReactor, renderSettings, renderState, showDialog } from './interface';
 import { EngineLoop, type FrameTiming } from './loop';
 import { SaveRepository } from './saves';
 import { RenderEngine } from './scene';
 import { detectGraphicsTier, loadSettings, saveSettings } from './settings';
 import { ObservableStore, type EngineState } from './store';
 import type { EngineSettings, GraphicsTier, PersistedGameState } from './types';
+import { ReactorSimulation } from '../simulation/reactor-model';
 
 function initialState(settings: EngineSettings): EngineState {
   return {
@@ -31,6 +32,8 @@ export class CoreApp {
   private readonly settings: EngineSettings;
   private readonly store: ObservableStore;
   private readonly camera = new CameraRig();
+  private readonly reactor = new ReactorSimulation();
+  private wasScramActive = false;
   private readonly audio: AudioBus;
   private readonly saves = new SaveRepository();
   private readonly input: InputManager;
@@ -69,6 +72,7 @@ export class CoreApp {
     const count = this.renderer.stage.world.interactableCount;
     this.store.update({ ready: true, renderer: backend, toast: `PLANT WORLD READY · ${count} service points` });
     this.updateWorldReadouts();
+    this.updateReactorReadouts();
     this.loop.start();
     this.showToast(`PLANT WORLD READY · ${count} service points`);
     this.refreshSlots();
@@ -101,7 +105,13 @@ export class CoreApp {
 
   private onInput = (event: Event): void => {
     const target = event.target;
-    if (target instanceof HTMLInputElement && target.type === 'range') this.readSettingsForm();
+    if (!(target instanceof HTMLInputElement) || target.type !== 'range') return;
+    const value = Number(target.value);
+    if (target.id === 'rod-control') this.reactor.setRodTarget(value);
+    else if (target.id === 'coolant-control') this.reactor.setCoolantFlowTarget(value);
+    else if (target.id === 'feedwater-control') this.reactor.setFeedwaterFlowTarget(value);
+    else { this.readSettingsForm(); return; }
+    this.updateReactorReadouts();
   };
 
   private onChange = (event: Event): void => {
@@ -166,6 +176,18 @@ export class CoreApp {
         this.audio.playTone('sfx', 520, 0.075, 'sine', 0.12);
         break;
       }
+      case 'scram':
+        this.reactor.scram();
+        this.updateReactorReadouts();
+        this.showToast('MANUAL SCRAM · CONTROL RODS INSERTING');
+        this.audio.playTone('sfx', 190, 0.2, 'sawtooth', 0.24);
+        break;
+      case 'reset-trip':
+        if (this.reactor.resetTrip()) {
+          this.updateReactorReadouts();
+          this.showToast('TRIP RESET · REACTOR REMAINS IN COLD SHUTDOWN');
+        } else this.showToast('RESET INHIBITED · VERIFY SAFE TRAINING CONDITIONS');
+        break;
       case 'audio':
         this.store.update({ audioMuted: !this.store.snapshot.audioMuted });
         this.audio.setMuted(this.store.snapshot.audioMuted);
@@ -250,12 +272,23 @@ export class CoreApp {
       }
     }
     if (!this.store.snapshot.paused && !modalOpen) {
+      this.reactor.update(timing.dt);
+      const reactorState = this.reactor.snapshot;
+      if (reactorState.scramActive && !this.wasScramActive && reactorState.scramCause !== 'MANUAL SCRAM') {
+        this.showToast(`AUTOMATIC REACTOR TRIP · ${reactorState.scramCause ?? 'CRITICAL LIMIT'}`);
+        this.audio.playTone('sfx', 145, 0.28, 'sawtooth', 0.24);
+      }
+      this.wasScramActive = reactorState.scramActive;
+      this.renderer.setEmergencyEffect(reactorState.emergencyEffect);
       this.camera.update(input, timing.dt);
       this.renderer.render(timing.dt, timing.elapsed);
+    } else {
+      this.renderer.setEmergencyEffect(this.reactor.snapshot.emergencyEffect);
     }
     this.input.consumeFrame();
     if (this.frameCounter % 8 === 0) {
       this.updateWorldReadouts();
+      this.updateReactorReadouts();
       this.store.update({ fps: timing.fps });
     }
   }
@@ -284,6 +317,10 @@ export class CoreApp {
     if (label) label.textContent = point?.name ?? 'INTERACT';
   }
 
+  private updateReactorReadouts(): void {
+    renderReactor(this.reactor.snapshot);
+  }
+
   private async saveSelectedSlot(): Promise<void> {
     const slot = this.store.snapshot.selectedSlot;
     const camera: CameraSnapshot = this.camera.snapshot();
@@ -297,7 +334,7 @@ export class CoreApp {
       yaw: camera.yaw,
       pitch: camera.pitch,
       settings: { ...this.settings },
-      simulation: { session: 'engine-foundation' },
+      simulation: { session: 'm4-reactor-thermal', ...this.reactor.serialize() },
     };
     try {
       await this.saves.save(slot, payload);
@@ -318,6 +355,12 @@ export class CoreApp {
         return;
       }
       const payload = record.payload;
+      if (typeof payload.simulation.powerPct === 'number') {
+        this.reactor.restore(payload.simulation);
+        this.wasScramActive = this.reactor.snapshot.scramActive;
+        this.renderer.setEmergencyEffect(this.reactor.snapshot.emergencyEffect);
+        this.updateReactorReadouts();
+      }
       this.camera.restore({
         mode: payload.cameraMode,
         position: payload.position,

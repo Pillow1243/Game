@@ -1,4 +1,5 @@
 import type { EngineSettings, SaveSlotId } from './types';
+import type { ReactorSnapshot } from '../simulation/reactor-model';
 import type { EngineState } from './store';
 
 const SETTINGS_OPTIONS = ['auto', 'low', 'med', 'high', 'ultra'] as const;
@@ -29,14 +30,37 @@ export function mountInterface(root: HTMLElement): void {
         <div class="monitor-row"><span>CAMERA</span><b id="camera-value">ORBIT</b></div>
         <div class="monitor-row"><span>POSITION</span><b id="position-value">0.0 / 1.7 / 9.0</b></div>
         <div class="monitor-divider"></div>
-        <div class="monitor-caption">PLANT VISUALIZATION</div>
-        <div class="monitor-state"><i class="status-pulse"></i><span>CORE FIELD ACTIVE</span></div>
-        <div class="meter-line"><i></i></div>
-        <p class="monitor-note">Navigation sandbox<br/>No plant controls are active.</p>
+        <div class="monitor-caption">PLANT SIMULATION</div>
+        <div class="monitor-state"><i class="status-pulse"></i><span>THERMAL MODEL ACTIVE</span></div>
+        <div class="meter-line"><i id="simulation-meter"></i></div>
+        <p class="monitor-note">Simplified training model<br/>No operational plant control.</p>
+      </aside>
+
+      <aside class="reactor-panel" aria-label="Reactor and thermal training controls">
+        <div class="reactor-panel-head"><span>REACTOR / THERMAL</span><i id="reactor-led"></i></div>
+        <div class="reactor-mode" id="reactor-mode">COLD SHUTDOWN</div>
+        <div class="reactor-power-readout"><span>THERMAL POWER</span><b id="reactor-power">0.0%</b></div>
+        <div class="reactor-power-track"><i id="reactor-power-meter"></i></div>
+        <div class="reactor-metrics">
+          <div><span>CORE TEMPERATURE</span><b id="core-temperature">25 °C</b></div>
+          <div><span>PRIMARY PRESSURE</span><b id="primary-pressure">0.12 MPa</b></div>
+          <div><span>STEAM PRESSURE</span><b id="steam-pressure">0.10 MPa</b></div>
+          <div><span>DECAY HEAT</span><b id="decay-heat">0.0%</b></div>
+          <div><span>CONTAINMENT</span><b id="containment-status">22 °C · 0 kPa</b></div>
+        </div>
+        <label class="reactor-control" for="rod-control"><span>CONTROL ROD INSERTION</span><b id="rod-value">100%</b><input id="rod-control" type="range" min="0" max="100" value="100" /></label>
+        <label class="reactor-control" for="coolant-control"><span>PRIMARY COOLANT FLOW</span><b id="coolant-value">100%</b><input id="coolant-control" type="range" min="0" max="100" value="100" /></label>
+        <label class="reactor-control" for="feedwater-control"><span>FEEDWATER FLOW</span><b id="feedwater-value">75%</b><input id="feedwater-control" type="range" min="0" max="100" value="75" /></label>
+        <div id="reactor-alarms" class="reactor-alarms" role="status" aria-live="polite">ALL TRAINING PARAMETERS NOMINAL</div>
+        <div class="reactor-actions">
+          <button class="scram-button" data-action="scram">MANUAL SCRAM</button>
+          <button class="reset-trip-button" data-action="reset-trip" disabled>RESET TRIP</button>
+        </div>
+        <p class="reactor-disclaimer">SIMPLIFIED TRAINING MODEL · NOT AN OPERATING PLANT CONTROL SYSTEM</p>
       </aside>
 
       <div class="view-reticle" aria-hidden="true"><span></span></div>
-      <div class="view-label"><span class="view-label-line"></span><span id="view-area">REACTOR HALL</span><small>SIMULATION VIEW · M3</small></div>
+      <div class="view-label"><span class="view-label-line"></span><span id="view-area">REACTOR HALL</span><small>SIMULATION VIEW · M4</small></div>
 
       <nav class="camera-dock" aria-label="Camera mode">
         <button data-action="camera-fps" title="Walk view (WASD)"><span>01</span> WALK</button>
@@ -125,6 +149,47 @@ export function renderState(state: Readonly<EngineState>): void {
     slot.classList.toggle('selected', selected);
     slot.setAttribute('aria-pressed', String(selected));
   });
+}
+
+export function renderReactor(snapshot: ReactorSnapshot): void {
+  const put = (selector: string, text: string): void => {
+    const element = document.querySelector<HTMLElement>(selector);
+    if (element) element.textContent = text;
+  };
+  put('#reactor-mode', snapshot.mode);
+  put('#reactor-power', `${snapshot.powerPct.toFixed(1)}%`);
+  put('#core-temperature', `${Math.round(snapshot.coreTemperatureC)} °C`);
+  put('#primary-pressure', `${snapshot.primaryPressureMpa.toFixed(2)} MPa`);
+  put('#steam-pressure', `${snapshot.steamPressureMpa.toFixed(2)} MPa`);
+  put('#decay-heat', `${snapshot.decayHeatPct.toFixed(1)}%`);
+  put('#containment-status', `${Math.round(snapshot.containmentTemperatureC)} °C · ${snapshot.containmentPressureKpa.toFixed(1)} kPa`);
+  put('#rod-value', `${Math.round(snapshot.targetRodInsertionPct)}%`);
+  put('#coolant-value', `${Math.round(snapshot.targetCoolantFlowPct)}%`);
+  put('#feedwater-value', `${Math.round(snapshot.targetFeedwaterFlowPct)}%`);
+
+  const power = document.querySelector<HTMLElement>('#reactor-power-meter');
+  if (power) power.style.width = `${Math.max(0, Math.min(100, snapshot.powerPct))}%`;
+  const systemMeter = document.querySelector<HTMLElement>('#simulation-meter');
+  if (systemMeter) systemMeter.style.width = `${Math.max(0, Math.min(100, snapshot.powerPct))}%`;
+  const panel = document.querySelector<HTMLElement>('.reactor-panel');
+  panel?.classList.toggle('alarm-caution', snapshot.alarmSeverity === 'caution');
+  panel?.classList.toggle('alarm-critical', snapshot.alarmSeverity === 'critical');
+  const led = document.querySelector<HTMLElement>('#reactor-led');
+  if (led) led.dataset.severity = snapshot.alarmSeverity;
+  const alarms = document.querySelector<HTMLElement>('#reactor-alarms');
+  if (alarms) alarms.textContent = snapshot.alarms.length > 0
+    ? snapshot.alarms.map((alarm) => `${alarm.severity.toUpperCase()} · ${alarm.message}`).join('  /  ')
+    : 'ALL TRAINING PARAMETERS NOMINAL';
+  const scram = document.querySelector<HTMLButtonElement>('[data-action="scram"]');
+  if (scram) scram.disabled = snapshot.scramActive;
+  const reset = document.querySelector<HTMLButtonElement>('[data-action="reset-trip"]');
+  if (reset) reset.disabled = !snapshot.canResetTrip;
+  const rods = document.querySelector<HTMLInputElement>('#rod-control');
+  const coolant = document.querySelector<HTMLInputElement>('#coolant-control');
+  const feedwater = document.querySelector<HTMLInputElement>('#feedwater-control');
+  if (rods) { rods.value = String(Math.round(snapshot.targetRodInsertionPct)); rods.disabled = snapshot.scramActive; }
+  if (coolant) coolant.value = String(Math.round(snapshot.targetCoolantFlowPct));
+  if (feedwater) feedwater.value = String(Math.round(snapshot.targetFeedwaterFlowPct));
 }
 
 export function showDialog(name: 'settings' | 'save'): void {

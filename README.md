@@ -20,7 +20,7 @@ Vite listens on `0.0.0.0:1420` for browser previews and the Tauri development sh
 ## Controls
 
 - **WASD / arrow keys:** move or pan; **Shift:** sprint; **mouse drag:** look; **wheel:** orbit zoom.
-- **E / Enter:** interaction cue; **Escape / P:** pause and resume.
+- **E / Enter:** interaction cue; **Escape / P:** pause and resume. The M4 reactor panel adjusts control-rod insertion, coolant flow, and feedwater flow; the manual SCRAM and reset controls are protected by a simplified safety interlock.
 - Touch devices receive a virtual movement stick, drag-look region, interact action, and pause button. A connected gamepad's left stick moves, right stick looks, A interacts, Start pauses, and shoulder buttons sprint.
 - The camera dock switches between walk, orbit, and cinematic modes. Settings include auto-detected or manual graphics tiers, four audio-bus levels, touch controls, and reduced motion.
 - Save/load opens three local IndexedDB slots. Audio is synthesized with Web Audio and starts after the first user gesture.
@@ -50,10 +50,15 @@ cd android && ./gradlew assembleRelease
 
 The CI workflow generates this project on the runner, applies minimum SDK 26 and an arm64-only ABI filter, and archives the unsigned release APK. For a distributable signed APK, configure Android signing in CI; never commit signing credentials.
 
+## M4 reactor training model
+
+The reactor/thermal console is an intentionally simplified training simulation. Control-rod insertion changes modeled reactor power; coolant and feedwater flow affect thermal and pressure trends. Protective trips, decay heat, alarms, and a safe-reset interlock are modeled, and simulation state is included in local saves. The model is not based on a real plant and is not an operational control system.
+
 ## Project structure
 
 ```text
 src/engine/                        Engine core, controls, audio, persistence, scene
+src/simulation/                    Reactor and thermal training model
 src/main.ts                        PWA registration and app bootstrap
 src/style.css                      Responsive HUD and touch-control layout
 vite.config.ts                     Vite 5, build splitting, and Workbox PWA
@@ -67,6 +72,8 @@ FILE_MANIFEST.md                   Full delivered-file inventory
 
 - M1 — foundation and cross-platform build configuration.
 - M2 — engine loop, renderer fallback, camera rig, input, audio, settings, and save slots.
-- M3–M8 — plant world, reactor and thermal simulation, turbine/grid, full UX/localization, modes/progression, and final platform QA remain scheduled.
+- M3 — explorable plant world, procedural materials, weather/day cycle, collision, interactions, and WebGL post-processing.
+- M4 — simplified reactor/thermal training model with control inputs, alarms, protective trip/decay heat, emergency visual feedback, reset interlock, and save/restore.
+- M5–M8 — turbine/grid simulation, full bilingual UX/localization, modes/progression, and final platform QA remain scheduled.
 
-The M2 systems-bay view is an engine navigation sandbox, not a plant operations model. No game physics, control-room operations, or safety training are represented yet. This educational game is not an operational control system.
+The M2 systems-bay view remains an engine navigation sandbox; M4 adds an illustrative reactor/thermal training model, not a realistic plant operations model. No output represents operating instructions or real equipment limits. This educational game is not an operational control system.
