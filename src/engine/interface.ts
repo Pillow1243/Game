@@ -10,7 +10,9 @@ export function mountInterface(root: HTMLElement): void {
     <div class="game-interface">
       <header class="topbar">
         <div class="brand-lockup"><span class="brand-symbol">☢</span><div><strong>CORE<span>:</span> NUCLEAR</strong><small>POWER SYSTEMS SIMULATOR</small></div></div>
-        <div class="live-chip"><i class="live-dot"></i><span>ENGINE ONLINE</span></div>
+        <div class="live-chip"><i class="live-dot"></i><span>PLANT SYSTEMS LIVE</span></div>
+        <div class="world-clock"><b id="world-time">06:00</b><span>PLANT TIME</span></div>
+        <button class="weather-button" data-action="weather" aria-label="Cycle site weather" title="Change weather"><span id="weather-label">CLEAR</span><small id="wind-speed">WIND 2.1 M/S</small></button>
         <div class="top-actions">
           <div class="fps-chip"><span id="render-backend">STARTING</span><b id="fps-value">--</b><small>FPS</small></div>
           <button class="icon-action" data-action="audio" aria-label="Toggle sound" title="Toggle sound">◖))</button>
@@ -34,7 +36,7 @@ export function mountInterface(root: HTMLElement): void {
       </aside>
 
       <div class="view-reticle" aria-hidden="true"><span></span></div>
-      <div class="view-label"><span class="view-label-line"></span><span>REACTOR SYSTEMS BAY</span><small>SIMULATION VIEW · M2</small></div>
+      <div class="view-label"><span class="view-label-line"></span><span id="view-area">REACTOR HALL</span><small>SIMULATION VIEW · M3</small></div>
 
       <nav class="camera-dock" aria-label="Camera mode">
         <button data-action="camera-fps" title="Walk view (WASD)"><span>01</span> WALK</button>
@@ -71,7 +73,7 @@ export function mountInterface(root: HTMLElement): void {
           <div class="dialog-footer"><span id="dialog-status">LOCAL DEVICE SETTINGS</span><button class="primary-button" data-action="close-dialog">DONE</button></div>
         </section>
       </div>
-      <div class="interaction-hint" id="interaction-hint" hidden><kbd>E</kbd><span>INTERACT</span></div>
+      <div class="interaction-hint" id="interaction-hint" hidden><kbd>E</kbd><span id="interaction-label">INTERACT</span></div>
     </div>`;
 }
 

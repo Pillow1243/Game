@@ -20,12 +20,15 @@ export class CameraRig {
   private mode: CameraMode = 'orbit';
   private cinematicTime = 0;
   private reducedMotion = false;
+  private movementResolver: ((current: Vector3, candidate: Vector3) => void) | null = null;
 
   constructor() { this.applyPose(); }
 
   get cameraMode(): CameraMode { return this.mode; }
 
   setReducedMotion(enabled: boolean): void { this.reducedMotion = enabled; }
+
+  setMovementResolver(resolver: (current: Vector3, candidate: Vector3) => void): void { this.movementResolver = resolver; }
 
   setMode(mode: CameraMode): void {
     if (this.mode === mode) return;
@@ -54,13 +57,17 @@ export class CameraRig {
     this.yaw -= input.lookX * 0.0022;
     this.pitch = MathUtils.clamp(this.pitch - input.lookY * 0.0022, -1.45, 1.45);
     const speed = (input.sprint ? 7.2 : 3.65) * dt;
+    const previous = this.position.clone();
     const forward = this.forwardVector();
     const right = new Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     this.position.addScaledVector(forward, input.moveY * speed);
     this.position.addScaledVector(right, input.moveX * speed);
     this.position.y = 1.7;
-    this.position.x = MathUtils.clamp(this.position.x, -44, 44);
-    this.position.z = MathUtils.clamp(this.position.z, -44, 44);
+    if (this.movementResolver) this.movementResolver(previous, this.position);
+    else {
+      this.position.x = MathUtils.clamp(this.position.x, -44, 44);
+      this.position.z = MathUtils.clamp(this.position.z, -44, 44);
+    }
   }
 
   private updateOrbit(input: InputFrame, dt: number): void {

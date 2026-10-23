@@ -38,6 +38,12 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .brand-lockup small { display: block; padding-top: 5px; color: #7c9298; font: 9px/1 var(--mono); letter-spacing: .16em; }
 .live-chip { display: flex; align-items: center; gap: 8px; margin-left: auto; color: #a5bbc0; font: 10px/1 var(--mono); letter-spacing: .14em; }
 .live-dot, .panel-led, .status-pulse { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 10px rgba(162, 255, 207, .72); animation: pulse 2s ease-in-out infinite; }
+.world-clock { display: grid; min-width: 76px; justify-items: center; gap: 4px; padding: 0 12px; border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+.world-clock b { color: #dceae5; font: 12px/1 var(--mono); letter-spacing: .08em; }
+.world-clock span { color: #748a8e; font: 7px/1 var(--mono); letter-spacing: .12em; }
+.weather-button { display: grid; min-width: 105px; justify-items: start; gap: 4px; padding: 5px 9px; border: 1px solid transparent; background: transparent; color: var(--cyan); font: 9px/1 var(--mono); letter-spacing: .1em; cursor: pointer; }
+.weather-button:hover { border-color: var(--line); background: rgba(121, 235, 216, .07); }
+.weather-button small { color: #788e92; font: 7px/1 var(--mono); letter-spacing: .08em; }
 .top-actions { display: flex; align-items: center; gap: 7px; }
 .fps-chip { display: flex; min-width: 92px; align-items: center; gap: 6px; justify-content: center; color: #91a6ac; font: 9px/1 var(--mono); }
 .fps-chip b { color: var(--mint); font-size: 14px; }
@@ -129,15 +135,21 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 @keyframes pulse { 50% { opacity: .4; } }
 @media (pointer: fine) and (min-width: 800px) { .touch-controls { display: none; } }
 @media (max-width: 760px) {
-  .topbar { right: 10px; left: 10px; height: 54px; gap: 8px; padding: 0 9px; }
-  .brand-lockup { min-width: auto; gap: 7px; }
-  .brand-symbol { font-size: 22px; }
-  .brand-lockup strong { font-size: 13px; }
-  .brand-lockup small { font-size: 7px; letter-spacing: .1em; }
+  .topbar { right: 10px; left: 10px; height: 54px; gap: 3px; padding: 0 6px; }
+  .brand-lockup { min-width: auto; gap: 5px; }
+  .brand-symbol { font-size: 18px; }
+  .brand-lockup strong { font-size: 11px; letter-spacing: .07em; }
+  .brand-lockup small { display: none; }
   .live-chip { display: none; }
-  .top-actions { margin-left: auto; gap: 2px; }
-  .fps-chip { min-width: 53px; gap: 4px; font-size: 7px; }
-  .icon-action { width: 34px; height: 34px; font-size: 15px; }
+  .world-clock { min-width: 46px; padding: 0 6px; }
+  .world-clock b { font-size: 10px; }
+  .world-clock span { display: none; }
+  .weather-button { min-width: 48px; padding: 5px 4px; font-size: 7px; letter-spacing: .03em; }
+  .weather-button small, #render-backend { display: none; }
+  .top-actions { margin-left: auto; gap: 1px; }
+  .fps-chip { min-width: 37px; gap: 3px; font-size: 7px; }
+  .fps-chip b { font-size: 11px; }
+  .icon-action { width: 29px; height: 34px; font-size: 13px; }
   .readout-panel { top: 78px; left: 10px; width: 188px; padding: 12px; }
   .panel-kicker { margin-bottom: 10px; font-size: 8px; }
   .monitor-row { padding: 5px 0; font-size: 8px; }

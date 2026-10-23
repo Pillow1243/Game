@@ -56,6 +56,7 @@ export class CoreApp {
     this.input = new InputManager(root, canvas);
     this.input.setTouchEnabled(this.settings.touchControls);
     this.renderer = new RenderEngine(canvas, this.settings);
+    this.camera.setMovementResolver((current, candidate) => this.renderer.stage.world.resolveMovement(current, candidate));
     this.loop = new EngineLoop((timing) => this.onFrame(timing));
     this.stateUnsubscribe = this.store.subscribe(renderState, true);
     renderSettings(this.settings);
@@ -65,9 +66,11 @@ export class CoreApp {
   async start(): Promise<void> {
     const backend = await this.renderer.initialize(this.camera.camera);
     if (this.disposed) return;
-    this.store.update({ ready: true, renderer: backend, toast: 'ENGINE READY · Explore the systems bay.' });
+    const count = this.renderer.stage.world.interactableCount;
+    this.store.update({ ready: true, renderer: backend, toast: `PLANT WORLD READY · ${count} service points` });
+    this.updateWorldReadouts();
     this.loop.start();
-    this.showToast('ENGINE READY · Explore the systems bay.');
+    this.showToast(`PLANT WORLD READY · ${count} service points`);
     this.refreshSlots();
   }
 
@@ -156,6 +159,13 @@ export class CoreApp {
       case 'close-dialog':
         this.closeDialog();
         break;
+      case 'weather': {
+        const weather = this.renderer.stage.world.cycleWeather();
+        this.updateWorldReadouts();
+        this.showToast(`SITE WEATHER · ${weather.toUpperCase()}`);
+        this.audio.playTone('sfx', 520, 0.075, 'sine', 0.12);
+        break;
+      }
       case 'audio':
         this.store.update({ audioMuted: !this.store.snapshot.audioMuted });
         this.audio.setMuted(this.store.snapshot.audioMuted);
@@ -230,20 +240,48 @@ export class CoreApp {
     this.frameCounter += 1;
     if (!modalOpen && input.pressed.has('pause')) this.setPaused(!this.store.snapshot.paused);
     if (!modalOpen && !this.store.snapshot.paused && input.pressed.has('interact')) {
-      this.audio.playTone('sfx', 740, 0.07, 'sine', 0.14);
-      this.showToast('SYSTEMS BAY · Interface interaction ready.');
+      const point = this.renderer.stage.world.nearestInteractable(this.camera.camera.position);
+      if (point) {
+        this.audio.playTone('sfx', 740, 0.07, 'sine', 0.14);
+        this.showToast(`${point.area} · ${point.name} — ${point.detail}`);
+      } else {
+        this.audio.playTone('sfx', 180, 0.09, 'triangle', 0.1);
+        this.showToast('NO SERVICE POINT IN RANGE · Walk closer to a marked station.');
+      }
     }
     if (!this.store.snapshot.paused && !modalOpen) {
       this.camera.update(input, timing.dt);
       this.renderer.render(timing.dt, timing.elapsed);
-      const position = this.camera.camera.position;
-      const positionElement = document.querySelector<HTMLElement>('#position-value');
-      if (positionElement && this.frameCounter % 8 === 0) {
-        positionElement.textContent = `${position.x.toFixed(1)} / ${position.y.toFixed(1)} / ${position.z.toFixed(1)}`;
-      }
     }
     this.input.consumeFrame();
-    if (this.frameCounter % 8 === 0) this.store.update({ fps: timing.fps });
+    if (this.frameCounter % 8 === 0) {
+      this.updateWorldReadouts();
+      this.store.update({ fps: timing.fps });
+    }
+  }
+
+  private updateWorldReadouts(): void {
+    const world = this.renderer.stage.world;
+    const hours = world.timeHours;
+    const hour = Math.floor(hours);
+    const minutes = Math.floor((hours - hour) * 60);
+    const time = document.querySelector<HTMLElement>('#world-time');
+    const weather = document.querySelector<HTMLElement>('#weather-label');
+    const wind = document.querySelector<HTMLElement>('#wind-speed');
+    const area = document.querySelector<HTMLElement>('#view-area');
+    const position = this.camera.camera.position;
+    const positionReadout = document.querySelector<HTMLElement>('#position-value');
+    const hint = document.querySelector<HTMLElement>('#interaction-hint');
+    const label = document.querySelector<HTMLElement>('#interaction-label');
+    if (time) time.textContent = `${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    if (weather) weather.textContent = world.weatherState.toUpperCase();
+    if (wind) wind.textContent = `WIND ${world.windMetersPerSecond.toFixed(1)} M/S`;
+    if (area) area.textContent = world.currentArea(position);
+    if (positionReadout) positionReadout.textContent = `${position.x.toFixed(1)} / ${position.y.toFixed(1)} / ${position.z.toFixed(1)}`;
+    const point = world.nearestInteractable(position);
+    const modalOpen = !document.querySelector<HTMLElement>('#dialog-backdrop')?.hidden;
+    if (hint) hint.hidden = !point || this.store.snapshot.paused || modalOpen;
+    if (label) label.textContent = point?.name ?? 'INTERACT';
   }
 
   private async saveSelectedSlot(): Promise<void> {

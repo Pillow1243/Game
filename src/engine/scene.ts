@@ -3,10 +3,14 @@ import {
   Float32BufferAttribute, Fog, Group, InstancedMesh, LineBasicMaterial, LineSegments, Matrix4, Mesh,
   MeshPhysicalMaterial, MeshStandardMaterial, PCFSoftShadowMap, PlaneGeometry, Points, PointsMaterial,
   Scene, SphereGeometry, SpotLight, TorusGeometry, Vector3, WebGLRenderer, SRGBColorSpace,
-  BoxGeometry, type Camera, type ColorRepresentation,
+  BoxGeometry, type Camera, type ColorRepresentation, type PerspectiveCamera,
 } from 'three';
+import type { CSM } from 'three/addons/csm/CSM.js';
 import type { EngineSettings } from './types';
 import { tierQuality } from './settings';
+import { ProceduralMaterials } from '../world/procedural-materials';
+import { PlantWorld } from '../world/plant-world';
+import { WebGLPostProcessing } from './post-processing';
 
 interface RendererDriver {
   domElement: HTMLCanvasElement;
@@ -57,6 +61,10 @@ export async function createRenderer(canvas: HTMLCanvasElement, settings: Engine
 
 export class PlantStage {
   readonly scene = new Scene();
+  readonly world: PlantWorld;
+  private readonly materials = new ProceduralMaterials(23017);
+  private readonly spots: SpotLight[] = [];
+  private cascadedShadows: CSM | null = null;
   private readonly core: Mesh<CylinderGeometry, MeshPhysicalMaterial>;
   private readonly glow: Mesh<SphereGeometry, MeshPhysicalMaterial>;
   private readonly ring: Mesh<TorusGeometry, MeshStandardMaterial>;
@@ -80,24 +88,25 @@ export class PlantStage {
     sun.shadow.camera.bottom = -32;
     this.scene.add(sun);
     const fill = new SpotLight(0x68ddcf, 36, 45, Math.PI / 4, 0.55, 1.5);
-    fill.position.set(6, 13, 7);
+    fill.position.set(4, 17, 9);
     fill.target.position.set(0, 1, 0);
     this.scene.add(fill, fill.target);
     const cool = new SpotLight(0x4d7fa5, 23, 38, Math.PI / 3, 0.6, 1.4);
-    cool.position.set(-9, 9, -7);
-    cool.target.position.set(0, 2, 0);
+    cool.position.set(-26, 10, 2);
+    cool.target.position.set(-25, 1, 0);
     this.scene.add(cool, cool.target);
     const warm = new SpotLight(0xf1bd79, 13, 28, Math.PI / 3.5, 0.6, 1.6);
-    warm.position.set(10, 7, -4);
-    warm.target.position.set(0, 0, 0);
+    warm.position.set(29, 15, 4);
+    warm.target.position.set(29, 1, 0);
     this.scene.add(warm, warm.target);
     const rim = new SpotLight(0x9a6fff, 9, 32, Math.PI / 2.8, 0.7, 1.8);
-    rim.position.set(0, 18, -10);
-    rim.target.position.set(0, 0, 0);
+    rim.position.set(50, 20, -22);
+    rim.target.position.set(52, 0, -22);
     this.scene.add(rim, rim.target);
+    this.spots.push(fill, cool, warm, rim);
 
-    const groundMaterial = new MeshStandardMaterial({ color: 0x17252c, roughness: 0.86, metalness: 0.12 });
-    const floor = new Mesh(new CircleGeometry(45, 96), groundMaterial);
+    const groundMaterial = this.materials.material('asphalt', 0x53686d, { roughness: 0.91, metalness: 0.04 });
+    const floor = new Mesh(new CircleGeometry(120, 128), groundMaterial);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.08;
     floor.receiveShadow = true;
@@ -108,17 +117,19 @@ export class PlantStage {
     );
     grid.position.y = -0.06;
     this.scene.add(grid);
-    const platform = new Mesh(new CylinderGeometry(8, 8.5, 0.55, 12), new MeshStandardMaterial({ color: 0x263940, roughness: 0.48, metalness: 0.72 }));
+    const platform = new Mesh(new CylinderGeometry(8, 8.5, 0.55, 12), this.materials.material('steel', 0x35484d, { roughness: 0.46, metalness: 0.72 }));
     platform.position.y = 0.24;
     platform.castShadow = platform.receiveShadow = true;
     this.scene.add(platform);
 
-    const vesselMaterial = new MeshPhysicalMaterial({ color: 0x83949a, metalness: 0.62, roughness: 0.26, clearcoat: 0.75, clearcoatRoughness: 0.18, transparent: true, opacity: 0.32, depthWrite: false });
+    const vesselPbr = this.materials.material('steel', 0x83949a, { metalness: 0.62, roughness: 0.26 });
+    const vesselMaterial = new MeshPhysicalMaterial({ color: 0x83949a, map: vesselPbr.map, roughness: 0.26, roughnessMap: vesselPbr.roughnessMap, metalness: 0.62, metalnessMap: vesselPbr.metalnessMap, normalMap: vesselPbr.normalMap, normalScale: vesselPbr.normalScale, clearcoat: 0.75, clearcoatRoughness: 0.18, transparent: true, opacity: 0.32, depthWrite: false });
+    vesselPbr.dispose();
     const vessel = new Mesh(new CylinderGeometry(2.85, 3.1, 4.9, 32, 1, false), vesselMaterial);
     vessel.position.set(0, 2.95, 0);
     vessel.castShadow = vessel.receiveShadow = true;
     this.scene.add(vessel);
-    const crown = new Mesh(new CylinderGeometry(2.92, 2.92, 0.42, 32), new MeshStandardMaterial({ color: 0x31434a, metalness: 0.88, roughness: 0.24 }));
+    const crown = new Mesh(new CylinderGeometry(2.92, 2.92, 0.42, 32), this.materials.material('steel', 0x31434a, { metalness: 0.88, roughness: 0.24 }));
     crown.position.set(0, 5.55, 0);
     crown.castShadow = true;
     this.scene.add(crown);
@@ -133,7 +144,7 @@ export class PlantStage {
     this.ring.position.y = 1.2;
     this.scene.add(this.ring);
 
-    const ribs = new InstancedMesh(new BoxGeometry(0.19, 4.25, 0.24), new MeshStandardMaterial({ color: 0x596d73, metalness: 0.72, roughness: 0.38 }), 12);
+    const ribs = new InstancedMesh(new BoxGeometry(0.19, 4.25, 0.24), this.materials.material('steel', 0x596d73, { metalness: 0.72, roughness: 0.38 }), 12);
     const matrix = new Matrix4();
     for (let i = 0; i < 12; i += 1) {
       const angle = (i / 12) * Math.PI * 2;
@@ -146,7 +157,7 @@ export class PlantStage {
 
     this.rotorGroup = new Group();
     for (let i = 0; i < 4; i += 1) {
-      const consoleMesh = new Mesh(new BoxGeometry(2.05, 1.25, 1.2), new MeshStandardMaterial({ color: 0x29383c, metalness: 0.56, roughness: 0.42 }));
+      const consoleMesh = new Mesh(new BoxGeometry(2.05, 1.25, 1.2), this.materials.material('paint', 0x29383c, { metalness: 0.56, roughness: 0.42 }));
       const angle = (i / 4) * Math.PI * 2 + Math.PI / 4;
       consoleMesh.position.set(Math.sin(angle) * 7, 0.9, Math.cos(angle) * 7);
       consoleMesh.lookAt(0, 0.85, 0);
@@ -162,7 +173,7 @@ export class PlantStage {
     }
     this.scene.add(this.rotorGroup);
 
-    const pipeMaterial = new MeshStandardMaterial({ color: 0x9badae, metalness: 0.79, roughness: 0.3 });
+    const pipeMaterial = this.materials.material('steel', 0x9badae, { metalness: 0.79, roughness: 0.3 });
     for (let i = 0; i < 4; i += 1) {
       const angle = (i / 4) * Math.PI * 2;
       const pipe = new Mesh(new CylinderGeometry(0.17, 0.17, 4.2, 12), pipeMaterial);
@@ -184,7 +195,7 @@ export class PlantStage {
     sparkGeometry.setAttribute('position', new Float32BufferAttribute(this.sparkPositions, 3));
     this.sparks = new Points(sparkGeometry, new PointsMaterial({ color: 0x66ddff, size: 0.045, transparent: true, opacity: 0.58, depthWrite: false }));
     this.scene.add(this.sparks);
-    this.addPerimeterPylons();
+    this.world = new PlantWorld(this.scene, sun, this.spots, this.materials);
   }
 
   private gridPoints(extent: number, step: number): Vector3[] {
@@ -196,22 +207,6 @@ export class PlantStage {
     return points;
   }
 
-  private addPerimeterPylons(): void {
-    const pylonMaterial = new MeshStandardMaterial({ color: 0x3c5157, roughness: 0.68, metalness: 0.5 });
-    const markerMaterial = new MeshStandardMaterial({ color: 0xff805e, emissive: 0xb62917, emissiveIntensity: 0.75 });
-    const count = 24;
-    for (let i = 0; i < count; i += 1) {
-      const angle = (i / count) * Math.PI * 2;
-      const pole = new Mesh(new CylinderGeometry(0.12, 0.15, 2.5, 8), pylonMaterial);
-      pole.position.set(Math.sin(angle) * 18, 1.18, Math.cos(angle) * 18);
-      pole.castShadow = true;
-      this.scene.add(pole);
-      const marker = new Mesh(new SphereGeometry(0.12, 8, 6), markerMaterial);
-      marker.position.set(pole.position.x, 2.48, pole.position.z);
-      this.scene.add(marker);
-    }
-  }
-
   setQuality(settings: EngineSettings): void {
     const quality = tierQuality(settings.graphicsTier);
     this.sparks.visible = quality.particles > 0;
@@ -221,9 +216,58 @@ export class PlantStage {
     this.keyLight.shadow.map?.dispose();
     this.keyLight.shadow.map = null;
     this.keyLight.shadow.needsUpdate = true;
+    this.world.setQuality(settings);
+    if (this.cascadedShadows) {
+      this.cascadedShadows.shadowMapSize = quality.shadows;
+      for (const light of this.cascadedShadows.lights) {
+        light.shadow.mapSize.set(quality.shadows, quality.shadows);
+        light.shadow.map?.dispose();
+        light.shadow.map = null;
+      }
+      this.cascadedShadows.updateFrustums();
+    }
   }
 
-  update(dt: number, elapsed: number): void {
+  async enableCascadedShadows(camera: PerspectiveCamera, settings: EngineSettings): Promise<void> {
+    if (this.cascadedShadows) return;
+    const { CSM } = await import('three/addons/csm/CSM.js');
+    const quality = tierQuality(settings.graphicsTier);
+    const csm = new CSM({
+      camera,
+      parent: this.scene,
+      cascades: 3,
+      maxFar: 125,
+      mode: 'practical',
+      shadowMapSize: quality.shadows,
+      lightDirection: new Vector3(-0.5, -1, -0.35).normalize(),
+      lightIntensity: 2.15,
+      lightMargin: 35,
+    });
+    this.scene.traverse((object) => {
+      if (!(object instanceof Mesh || object instanceof InstancedMesh)) return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of materials) csm.setupMaterial(material);
+    });
+    this.keyLight.castShadow = false;
+    this.world.setCsmActive(true);
+    this.cascadedShadows = csm;
+    csm.update();
+    csm.updateUniforms();
+  }
+
+  updateShadowFrustums(): void { this.cascadedShadows?.updateFrustums(); }
+
+  update(dt: number, elapsed: number, cameraPosition: Vector3): void {
+    this.world.update(dt, elapsed, cameraPosition);
+    if (this.cascadedShadows) {
+      this.cascadedShadows.lights.forEach((light) => {
+        light.color.copy(this.keyLight.color);
+        light.intensity = this.world.daylightFactor * 2.15;
+      });
+      this.cascadedShadows.camera.updateMatrixWorld();
+      this.cascadedShadows.update();
+      this.cascadedShadows.updateUniforms();
+    }
     this.core.rotation.y += dt * 0.08;
     const pulse = 0.9 + Math.sin(elapsed * 1.7) * 0.09;
     this.glow.scale.setScalar(pulse);
@@ -240,6 +284,10 @@ export class PlantStage {
   }
 
   dispose(): void {
+    this.cascadedShadows?.remove();
+    this.cascadedShadows?.dispose();
+    this.cascadedShadows = null;
+    this.world.dispose();
     this.scene.traverse((object) => {
       if (object instanceof Mesh || object instanceof InstancedMesh) {
         object.geometry.dispose();
@@ -254,20 +302,25 @@ export class PlantStage {
         for (const material of mats) material.dispose();
       }
     });
+    this.materials.dispose();
   }
 }
 
 export class RenderEngine {
-  readonly stage = new PlantStage();
+  readonly stage: PlantStage;
+  private settings: EngineSettings;
   private readonly rendererSetup: Promise<RendererSetup>;
   private renderer: RendererDriver | null = null;
   private backend: 'webgpu' | 'webgl2' = 'webgl2';
   private readonly canvas: HTMLCanvasElement;
   private readonly resizeObserver: ResizeObserver;
-  private camera: Camera | null = null;
+  private camera: PerspectiveCamera | null = null;
+  private postProcessing: WebGLPostProcessing | null = null;
 
   constructor(canvas: HTMLCanvasElement, settings: EngineSettings) {
     this.canvas = canvas;
+    this.settings = settings;
+    this.stage = new PlantStage();
     this.stage.setQuality(settings);
     this.rendererSetup = createRenderer(canvas, settings).then((setup) => {
       this.renderer = setup.renderer;
@@ -280,39 +333,68 @@ export class RenderEngine {
     window.addEventListener('resize', this.resize);
   }
 
-  async initialize(camera: Camera): Promise<'webgpu' | 'webgl2'> {
+  async initialize(camera: PerspectiveCamera): Promise<'webgpu' | 'webgl2'> {
     this.camera = camera;
     const setup = await this.rendererSetup;
+    if (setup.backend === 'webgl2') {
+      try {
+        await this.stage.enableCascadedShadows(camera, this.settings);
+      } catch (error) {
+        console.warn('CORE: cascaded shadows unavailable; retaining the directional shadow.', error);
+      }
+      const width = Math.max(1, this.canvas.parentElement?.clientWidth ?? window.innerWidth);
+      const height = Math.max(1, this.canvas.parentElement?.clientHeight ?? window.innerHeight);
+      this.postProcessing = new WebGLPostProcessing(setup.renderer as unknown as WebGLRenderer, this.stage.scene, camera, this.settings.graphicsTier, width, height);
+    }
     this.resize();
     return setup.backend;
   }
 
   setSettings(settings: EngineSettings): void {
+    this.settings = settings;
+    this.stage.setQuality(settings);
     if (!this.renderer) return;
     const quality = tierQuality(settings.graphicsTier);
     this.renderer.setPixelRatio(quality.pixelRatio);
-    if (this.renderer.shadowMap) this.renderer.shadowMap.enabled = settings.graphicsTier !== 'low';
+    if (this.renderer.shadowMap) this.renderer.shadowMap.enabled = true;
+    const size = this.getViewportSize();
+    this.postProcessing?.setQuality(settings.graphicsTier, size.width, size.height);
     this.resize();
   }
 
   render(dt: number, elapsed: number): void {
-    this.stage.update(dt, elapsed);
-    if (this.renderer && this.camera) this.renderer.render(this.stage.scene, this.camera);
+    if (!this.camera) return;
+    this.stage.update(dt, elapsed, this.camera.position);
+    if (this.postProcessing) this.postProcessing.render(dt);
+    else if (this.renderer) this.renderer.render(this.stage.scene, this.camera);
   }
+
+  setEmergencyEffect(level: number): void { this.postProcessing?.setEmergencyLevel(level); }
 
   get rendererName(): 'webgpu' | 'webgl2' { return this.backend; }
 
+  private getViewportSize(): { width: number; height: number } {
+    const parent = this.canvas.parentElement;
+    return { width: Math.max(1, parent?.clientWidth ?? window.innerWidth), height: Math.max(1, parent?.clientHeight ?? window.innerHeight) };
+  }
+
   private resize = (): void => {
     if (!this.renderer) return;
-    const parent = this.canvas.parentElement;
-    const width = Math.max(1, parent?.clientWidth ?? window.innerWidth);
-    const height = Math.max(1, parent?.clientHeight ?? window.innerHeight);
+    const { width, height } = this.getViewportSize();
+    if (this.camera) {
+      this.camera.aspect = width / height;
+      this.camera.updateProjectionMatrix();
+      this.stage.updateShadowFrustums();
+    }
     this.renderer.setSize(width, height, false);
+    this.postProcessing?.setSize(width, height);
   };
 
   async dispose(): Promise<void> {
     this.resizeObserver.disconnect();
     window.removeEventListener('resize', this.resize);
+    this.postProcessing?.dispose();
+    this.postProcessing = null;
     this.stage.dispose();
     await this.rendererSetup.catch(() => undefined);
     this.renderer?.dispose();
