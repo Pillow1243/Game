@@ -1,6 +1,6 @@
 # CORE: Nuclear
 
-CORE: Nuclear is a cross-platform power-plant operations simulator targeting the browser, Windows desktop (Tauri 2), and Android (Capacitor 6, minimum SDK 26). This repository is being delivered in eight implementation milestones; the current M1 foundation establishes the strict TypeScript/Vite toolchain, app shell, native packaging configuration, PWA support, and build automation.
+CORE: Nuclear is a cross-platform power-plant operations simulator targeting the browser, Windows desktop (Tauri 2), and Android (Capacitor 6, minimum SDK 26). Delivery is being built in eight milestones. M1 established the strict TypeScript/Vite toolchain and native packaging; M2 now provides a live 3D navigation sandbox, camera modes, unified controls, procedural audio, local settings, and three IndexedDB save slots.
 
 ## Requirements
 
@@ -15,7 +15,15 @@ npm ci
 npm run dev
 ```
 
-Vite listens on `0.0.0.0:1420` so it is usable in local browser previews and by the Tauri development shell. `npm run build` runs the strict TypeScript check and creates the production PWA in `dist/`.
+Vite listens on `0.0.0.0:1420` for browser previews and the Tauri development shell. `npm run build` performs a strict TypeScript check and creates the production PWA in `dist/`.
+
+## Controls
+
+- **WASD / arrow keys:** move or pan; **Shift:** sprint; **mouse drag:** look; **wheel:** orbit zoom.
+- **E / Enter:** interaction cue; **Escape / P:** pause and resume.
+- Touch devices receive a virtual movement stick, drag-look region, interact action, and pause button. A connected gamepad's left stick moves, right stick looks, A interacts, Start pauses, and shoulder buttons sprint.
+- The camera dock switches between walk, orbit, and cinematic modes. Settings include auto-detected or manual graphics tiers, four audio-bus levels, touch controls, and reduced motion.
+- Save/load opens three local IndexedDB slots. Audio is synthesized with Web Audio and starts after the first user gesture.
 
 ## Windows desktop
 
@@ -25,7 +33,7 @@ npm run tauri:dev
 npm run tauri:build
 ```
 
-The Tauri bundle configuration requests both NSIS `.exe` and WiX `.msi` installers. Installer size depends on the Windows WebView2 bootstrapper and final assets; the ≤10 MB target is not yet measured or guaranteed.
+The Tauri bundle requests both NSIS `.exe` and WiX `.msi` installers. Installer size depends on the Windows WebView2 bootstrapper and final assets; the ≤10 MB target is not yet measured or guaranteed.
 
 ## Android
 
@@ -40,24 +48,25 @@ npx cap sync android
 cd android && ./gradlew assembleRelease
 ```
 
-The CI workflow generates this project on the runner, applies minimum SDK 26 and an arm64-only ABI filter, and archives the unsigned release APK. For a distributable signed APK, configure Android signing in the CI environment; never commit signing credentials.
+The CI workflow generates this project on the runner, applies minimum SDK 26 and an arm64-only ABI filter, and archives the unsigned release APK. For a distributable signed APK, configure Android signing in CI; never commit signing credentials.
 
 ## Project structure
 
 ```text
-index.html                         Browser and native-webview entry
-src/main.ts                        PWA registration and app boot entry
-src/style.css                      Responsive foundation theme
-vite.config.ts                     Vite 5 and Workbox PWA configuration
+src/engine/                        Engine core, controls, audio, persistence, scene
+src/main.ts                        PWA registration and app bootstrap
+src/style.css                      Responsive HUD and touch-control layout
+vite.config.ts                     Vite 5, build splitting, and Workbox PWA
 capacitor.config.ts                Capacitor 6 app identity and native plugins
 src-tauri/                         Tauri 2 desktop shell and bundle configuration
 .github/workflows/build.yml        Web, Windows, and Android CI jobs
-FILE_MANIFEST.md                   M1 delivered-file inventory
+FILE_MANIFEST.md                   Full delivered-file inventory
 ```
 
 ## Delivery status
 
 - M1 — foundation and cross-platform build configuration.
-- M2–M8 — engine, simulation, world, controls, interface, game modes, and final platform QA are scheduled for subsequent milestones.
+- M2 — engine loop, renderer fallback, camera rig, input, audio, settings, and save slots.
+- M3–M8 — plant world, reactor and thermal simulation, turbine/grid, full UX/localization, modes/progression, and final platform QA remain scheduled.
 
-No production simulation, safety training, or real plant operation is represented by the M1 shell. This is an educational game project, not an operational control system.
+The M2 systems-bay view is an engine navigation sandbox, not a plant operations model. No game physics, control-room operations, or safety training are represented yet. This educational game is not an operational control system.

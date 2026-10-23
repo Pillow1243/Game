@@ -10,12 +10,23 @@ export default defineConfig({
     port: 1420,
     watch: { ignored: ['**/src-tauri/**'] },
   },
-  preview: { host: '0.0.0.0' },
+  preview: { host: '0.0.0.0', allowedHosts: true },
+  optimizeDeps: { esbuildOptions: { target: 'esnext' } },
   envPrefix: ['VITE_', 'TAURI_ENV_*'],
   build: {
     target: ['es2022', 'chrome105', 'safari15'],
     sourcemap: true,
-    rollupOptions: { input: 'index.html' },
+    rollupOptions: {
+      input: 'index.html',
+      output: {
+        manualChunks(id) {
+          const normalizedId = id.replaceAll(String.fromCharCode(92), '/');
+          if (normalizedId.includes('/node_modules/three/examples/')) return 'three-webgpu';
+          if (normalizedId.includes('/node_modules/three/')) return 'three-core';
+          return undefined;
+        },
+      },
+    },
   },
   plugins: [
     VitePWA({
