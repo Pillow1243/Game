@@ -1,51 +1,63 @@
-# ☕ کافه‌داری حرفه‌ای — Café Tycoon
+# CORE: Nuclear
 
-یک **شبیه‌ساز مدیریت کافه** کامل و پرامکانات، نوشته‌شده با جاوااسکریپت خالص (Vanilla JS) و HTML5 Canvas.
-بدون هیچ کتابخانه یا فایل تصویری/صوتی خارجی — تمام گرافیک‌ها و صداها **برنامه‌ای (Procedural)** ساخته شده‌اند.
+CORE: Nuclear is a cross-platform power-plant operations simulator targeting the browser, Windows desktop (Tauri 2), and Android (Capacitor 6, minimum SDK 26). This repository is being delivered in eight implementation milestones; the current M1 foundation establishes the strict TypeScript/Vite toolchain, app shell, native packaging configuration, PWA support, and build automation.
 
-## اجرا
-چون پروژه از ماژول ES استفاده نمی‌کند، کافی است آن را با یک سرور ایستای ساده باز کنید:
+## Requirements
 
-```bash
-# از داخل پوشه ریپو:
-python3 -m http.server 8000
-# سپس مرورگر را باز کنید: http://localhost:8000
+- Node.js 20 or newer and npm
+- For Windows desktop builds: Rust stable and the Tauri 2 prerequisites for Windows (MSVC C++ Build Tools and WebView2)
+- For Android builds: JDK 17, Android SDK / command-line tools, and Gradle (the wrapper is provided by Capacitor's generated Android project)
+
+## Browser development
+
+```sh
+npm ci
+npm run dev
 ```
 
-یا هر سرور ایستای دیگر (مثلاً `npx serve`). باز کردن مستقیم `index.html` هم در بیشتر مرورگرها کار می‌کند.
+Vite listens on `0.0.0.0:1420` so it is usable in local browser previews and by the Tauri development shell. `npm run build` runs the strict TypeScript check and creates the production PWA in `dist/`.
 
-## ویژگی‌ها
-- 🎮 **گیم‌پلی مدیریتی کامل**: سفارش‌گیری، آماده‌سازی نوشیدنی با مینی‌گیم زمان‌بندی (عالی/خوب/قبول/ضعیف)، سرو و مشتریان داخل‌نشین.
-- 👥 **کارکنان**: استخدام باریستا و پیشخوان؛ آن‌ها سفارش‌گیری و درست‌کردن را خودکار انجام می‌دهند.
-- 🛒 **فروشگاه و ارتقا**: دستگاه‌های بهتر، میز/صندلی بیشتر، دکوراسیون، بازاریابی، مجوز استخدام و آیتم‌های منوی جدید.
-- 📅 **چرخه روزانه**: منحنی شلوغی صبح/عصر، هدف درآمد روزانه با پاداش، خلاصه پایان روز.
-- 🎲 **رخدادهای تصادفی**: اینفلوئنسر، منتقد، تخفیف تامین‌کننده، خرابی دستگاه، روز بارانی، ساعت شلوغی، جشن محلی، قطعی برق و مشتری وفادار.
-- ⭐ **اعتبار و ستاره**: سیستم امتیازدهی ۱ تا ۵ ستاره بر اساس سرعت و کیفیت سرویس.
-- 🏆 **۱۲ دستاورد**، **آمار عملکرد** و **تاریخچه روزها**.
-- 💾 **ذخیره‌سازی خودکار** در LocalStorage.
-- 🔊 **موسیقی Lo-fi و افکت‌های صوتی** برنامه‌ای (Web Audio) با کنترل حجم/مute.
-- 🌙 **نورپردازی پویا** روز/شب، ذرات (بخار، سکه، قلب، جرقه) و افکت‌های صفحه.
-- 🌐 **دوزبانه (فارسی/انگلیسی)** با رابط RTL.
-- 📱 **واکنش‌گرا** و پشتیبانی لمس (موبایل).
+## Windows desktop
 
-## ساختار کد
-```
-index.html            لایه بوت + HUD + پنل‌های کناری
-styles/main.css       تم cozy و گرافیک رابط کاربری
-src/utils.js          ریاضی، RNG، رنگ، فرمت‌بندی، کمک‌ابزارهای DOM
-src/audio.js          موتور صدای برنامه‌ای (موسیقی + SFX)
-src/data.js           منو، دستگاه‌ها، ارتقاها، رخدادها، دستاوردها، چیدمان دنیا
-src/i18n.js           جداول رشته فارسی/انگلیسی
-src/entities.js       کلاس‌های Customer / Employee / Particle
-src/systems.js        FX/ذرات، Save/Load، بررسی دستاوردها
-src/render.js         رندرر Canvas (دنیا، شخصیت‌ها، مینی‌گیم، نورپردازی)
-src/ui.js             HUD، تب‌ها، مودال‌ها، تنظیمات، آموزش
-src/game.js           موتور بازی (حلقه، شبیه‌سازی، اقتصاد، رخدادها، ورودی)
-src/main.js           راه‌اندازی و صفحه بوت
+```sh
+npm ci
+npm run tauri:dev
+npm run tauri:build
 ```
 
-## نکات
-- بازی در مرورگر اجرا می‌شود و پیشرفت در همان دستگاه ذخیره می‌شود.
-- برای بهترین کیفیت صدا، روی «باز کردن کافه» بزنید تا کانتکست صوتی فعال شود.
+The Tauri bundle configuration requests both NSIS `.exe` and WiX `.msi` installers. Installer size depends on the Windows WebView2 bootstrapper and final assets; the ≤10 MB target is not yet measured or guaranteed.
 
-گرم‌تان باشد! ☕
+## Android
+
+On a fresh checkout, add the native Android project once, set its Gradle `minSdkVersion` to `26`, then sync/build:
+
+```sh
+npm ci
+npm run build
+npx cap add android
+# Set minSdkVersion = 26 in android/variables.gradle
+npx cap sync android
+cd android && ./gradlew assembleRelease
+```
+
+The CI workflow generates this project on the runner, applies minimum SDK 26 and an arm64-only ABI filter, and archives the unsigned release APK. For a distributable signed APK, configure Android signing in the CI environment; never commit signing credentials.
+
+## Project structure
+
+```text
+index.html                         Browser and native-webview entry
+src/main.ts                        PWA registration and app boot entry
+src/style.css                      Responsive foundation theme
+vite.config.ts                     Vite 5 and Workbox PWA configuration
+capacitor.config.ts                Capacitor 6 app identity and native plugins
+src-tauri/                         Tauri 2 desktop shell and bundle configuration
+.github/workflows/build.yml        Web, Windows, and Android CI jobs
+FILE_MANIFEST.md                   M1 delivered-file inventory
+```
+
+## Delivery status
+
+- M1 — foundation and cross-platform build configuration.
+- M2–M8 — engine, simulation, world, controls, interface, game modes, and final platform QA are scheduled for subsequent milestones.
+
+No production simulation, safety training, or real plant operation is represented by the M1 shell. This is an educational game project, not an operational control system.

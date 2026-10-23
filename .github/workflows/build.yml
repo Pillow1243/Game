@@ -1,0 +1,84 @@
+name: Cross-platform build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web / PWA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx vite build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: core-nuclear-web
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+  windows:
+    name: Windows desktop
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+      - run: npm run tauri:build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: core-nuclear-windows
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error
+          retention-days: 14
+
+  android:
+    name: Android arm64 APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap add android
+      - name: Set Android minimum SDK to 26
+        run: sed -i -E 's/minSdkVersion = [0-9]+/minSdkVersion = 26/' android/variables.gradle
+      - name: Restrict native APK to arm64
+        run: sed -i '/defaultConfig {/a\        ndk { abiFilters "arm64-v8a" }' android/app/build.gradle
+      - run: npx cap sync android
+      - name: Assemble unsigned arm64 release APK
+        working-directory: android
+        run: ./gradlew assembleRelease
+      - name: Note release signing status
+        run: echo 'WARNING: CI APK is unsigned unless signing secrets are configured.'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: core-nuclear-android
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,40 @@
+{
+  "name": "core-nuclear",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "cap": "cap",
+    "cap:sync": "cap sync android"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0",
+    "@capacitor/core": "^6.2.1",
+    "@capacitor/haptics": "^6.0.2",
+    "@capacitor/status-bar": "^6.0.2",
+    "@dimforge/rapier3d-compat": "^0.14.0",
+    "three": "^0.165.0"
+  },
+  "overrides": {
+    "tar": "7.5.22"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.2.2",
+    "@capacitor/cli": "^6.2.1",
+    "@tauri-apps/cli": "^2.0.0",
+    "@types/three": "^0.165.0",
+    "typescript": "~5.4.5",
+    "vite": "^5.4.0",
+    "vite-plugin-pwa": "^0.20.5"
+  }
+}
